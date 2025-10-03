@@ -13,3 +13,4 @@ pytest_asyncio
 jwt
 httpx
 python-dotenv
+hvac
