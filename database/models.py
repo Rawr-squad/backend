@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Mapped
 
-from dao.database import Base, uniq_str_an
+from database.database import Base, uniq_str_an
 
 
 class User(Base):
