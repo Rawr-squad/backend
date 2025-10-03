@@ -14,4 +14,4 @@ def get_db_url():
     return (f'postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@'
             f'{DB_HOST}:{DB_PORT}/{DB_NAME}')
 
-print('/')
+print('//')
