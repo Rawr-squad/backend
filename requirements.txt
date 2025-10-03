@@ -1,0 +1,15 @@
+pyjwt
+uvicorn[standard]
+fastapi[all]
+pydantic==2.9.2
+pydantic-settings==2.5.2
+isort==6.0.0b2
+asyncpg
+databases[asyncpg]
+sqlalchemy>=2.0
+alembic
+pytest
+pytest_asyncio
+jwt
+httpx
+python-dotenv
