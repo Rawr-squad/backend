@@ -160,6 +160,18 @@ class AccessRequestDAO(BaseDAO[AccessRequest]):
 
         return await cls.update(request_id, **update_data)
 
+    @classmethod
+    async def find_all(cls, **filters) -> List[AccessRequest]:
+        """Найти все записи с фильтрацией"""
+        async with async_session_maker() as session:
+            query = select(cls.model)
+            if filters:
+                query = query.filter_by(**filters)
+            # Сортируем по дате обновления (новые сначала)
+            query = query.order_by(cls.model.update_at.desc())
+            result = await session.execute(query)
+            return result.scalars().all()
+
 
 class AccessRecordDAO(BaseDAO[AccessRecord]):
     model = AccessRecord
