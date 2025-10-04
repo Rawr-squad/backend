@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.sql.annotation import Annotated
@@ -7,9 +7,10 @@ from starlette import status
 from core import verify_password, create_access_token, get_password_hash
 from core.config import ACCESS_TOKEN_TTL_MINUTES
 from core.dependencies import get_current_active_user, get_current_user, get_current_admin
-from dao.dao import UserDAO, AdminDAO, SecretDAO, AccessRequestDAO
+from dao.dao import UserDAO, AdminDAO, SecretDAO, AccessRequestDAO, AccessRecordDAO
 from database.models import AccessStatus
-from models.user import LoginRequest, Token, AdminResponse, AdminCreate
+from models.secrets import ChangeStatusRequest
+from models.user import LoginRequest, Token, AdminResponse, AdminCreate, UserResponse
 from openbao_client import OpenBaoClient
 
 secret_router = APIRouter()
@@ -41,11 +42,57 @@ async def login_for_access_token(
     )
     return Token(access_token=access_token, token_type="bearer")
 
+
 @secret_router.get("/secret/{path}")
-async def get_secret(path: str):
+async def get_secret(
+        path: str,
+        current_user: UserResponse = Depends(get_current_active_user)
+):
     try:
+        # Находим секрет по path
+        secret_record = await SecretDAO.find_by_path(path)
+        if not secret_record:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Secret '{path}' not found"
+            )
+
+        # Проверяем активный доступ
+        active_access = await AccessRecordDAO.get_active_access(
+            user_id=current_user.id,
+            secret_id=secret_record.id
+        )
+
+        if not active_access:
+            # Проверяем, был ли доступ вообще
+            any_access = await AccessRecordDAO.find_data_by_id(
+                user_id=current_user.id,
+                secret_id=secret_record.id
+            )
+
+            if any_access:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access expired"
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied - no permissions"
+                )
+
+        # Получаем секрет из OpenBao/Vault
         secret = client.read_secret(path)
-        return {"data": secret["data"]["data"]}
+        return {
+            "data": secret["data"]["data"],
+            "access_info": {
+                "expires_at": active_access.expiration_date.isoformat(),
+                "access_record_id": active_access.id
+            }
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -62,3 +109,76 @@ async def create_secret(path: str, payload: dict, current_admin : AdminResponse 
 @secret_router.get('/requests')
 async def get_access_requests(current_admin : AdminResponse = Depends(get_current_admin)):
     return await AccessRequestDAO.find_data_by_id()
+
+
+@secret_router.post('/requests/change_status')
+async def change_status_access_request(
+        change_data: ChangeStatusRequest,  # Принимаем данные из тела запроса
+        current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Изменить статус запроса доступа и создать AccessRecord при одобрении"""
+
+    # Находим запрос
+    access_request = await AccessRequestDAO.find_one(id=change_data.request_id)
+    if not access_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Access request not found"
+        )
+
+    # Проверяем, не одобрен ли уже этот запрос
+    if access_request.status == AccessStatus.APPROVED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This request is already approved"
+        )
+
+    # Обновляем статус
+    updated_request = await AccessRequestDAO.update_status(
+        request_id=change_data.request_id,
+        status=change_data.new_status,
+        response_message=change_data.response_message
+    )
+
+    response_data = {
+        "message": f"Access request status updated to {change_data.new_status.value}",
+        "request": updated_request
+    }
+
+    # Если статус APPROVED - создаем запись в AccessRecord
+    if change_data.new_status == AccessStatus.APPROVED:
+        # Проверяем, нет ли уже активного доступа
+        existing_access = await AccessRecordDAO.find_active_by_user_and_secret(
+            user_id=access_request.user_id,
+            secret_id=access_request.secret_id
+        )
+
+        if existing_access:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User already has active access to this secret"
+            )
+
+        # Вычисляем дату истечения
+        expiration_date = datetime.now() + timedelta(days=access_request.access_period)
+
+        # Создаем запись о доступе
+        access_record = await AccessRecordDAO.add(
+            user_id=access_request.user_id,
+            secret_id=access_request.secret_id,
+            expiration_date=expiration_date
+        )
+
+        if not access_record:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create access record"
+            )
+
+        response_data.update({
+            "message": "Access request approved and access record created",
+            "access_record": access_record,
+            "expires_at": expiration_date.isoformat()
+        })
+
+    return response_data

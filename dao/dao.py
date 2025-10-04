@@ -1,13 +1,15 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional, List
 
 from dao.base import BaseDAO
-from database.models import User, Secret, Admin, AccessRequest, AccessStatus
+from database.models import User, Secret, Admin, AccessRequest, AccessStatus, AccessRecord
 from database.database import async_session_maker
 
 
-class UserDAO(BaseDAO):
+class UserDAO(BaseDAO[User]):
     model = User
 
     @classmethod
@@ -82,6 +84,16 @@ class UserDAO(BaseDAO):
 class SecretDAO(BaseDAO[Secret]):
     model = Secret
 
+    @classmethod
+    async def find_by_path(cls, path: str) -> Optional[Secret]:
+        """Найти секрет по path (service_name)"""
+        return await cls.find_data_by_id(service_name=path)
+
+    @classmethod
+    async def find_by_service_name(cls, service_name: str) -> Optional[Secret]:
+        """Алиас для find_by_path"""
+        return await cls.find_by_path(service_name)
+
 
 class AdminDAO(BaseDAO[Admin]):
     model = Admin
@@ -102,6 +114,7 @@ class AccessRequestDAO(BaseDAO[AccessRequest]):
             result = await session.execute(query)
             return result.scalar_one_or_none() is not None
 
+
     @classmethod
     async def find_one(cls, **filters):
         """Найти ОДНУ запись по фильтру (первую найденную)"""
@@ -109,3 +122,110 @@ class AccessRequestDAO(BaseDAO[AccessRequest]):
             query = select(cls.model).filter_by(**filters)
             result = await session.execute(query)
             return result.scalar_one_or_none()
+
+    @classmethod
+    async def update(cls, instance_id: int, **values):
+        """Обновить запись по ID"""
+        async with async_session_maker() as session:
+            try:
+                # Находим запись
+                query = select(cls.model).filter_by(id=instance_id)
+                result = await session.execute(query)
+                instance = result.scalar_one_or_none()
+
+                if not instance:
+                    return None
+
+                # Обновляем поля
+                for key, value in values.items():
+                    if hasattr(instance, key):
+                        setattr(instance, key, value)
+
+                session.add(instance)
+                await session.commit()
+                await session.refresh(instance)
+                return instance
+
+            except SQLAlchemyError as e:
+                await session.rollback()
+                print(f"Error updating record: {e}")
+                raise e
+
+    @classmethod
+    async def update_status(cls, request_id: int, status: AccessStatus, response_message: str = None):
+        """Обновить статус запроса доступа"""
+        update_data = {"status": status}
+        if response_message:
+            update_data["response_message"] = response_message
+
+        return await cls.update(request_id, **update_data)
+
+
+class AccessRecordDAO(BaseDAO[AccessRecord]):
+    model = AccessRecord
+
+    @classmethod
+    async def find_active_by_user_and_secret(cls, user_id: int, secret_id: int) -> Optional[AccessRecord]:
+        """Найти активную запись доступа (не истекшую)"""
+        async with async_session_maker() as session:
+            query = select(cls.model).filter_by(
+                user_id=user_id,
+                secret_id=secret_id
+            ).where(cls.model.expiration_date > datetime.now())
+
+            result = await session.execute(query)
+            return result.scalar_one_or_none()
+
+    @classmethod
+    async def find_active_by_user(cls, user_id: int) -> List[AccessRecord]:
+        """Найти все активные записи доступа пользователя"""
+        async with async_session_maker() as session:
+            query = select(cls.model).filter_by(
+                user_id=user_id
+            ).where(cls.model.expiration_date > datetime.now())
+
+            result = await session.execute(query)
+            return result.scalars().all()
+
+    @classmethod
+    async def find_expired_records(cls) -> List[AccessRecord]:
+        """Найти все истекшие записи доступа"""
+        async with async_session_maker() as session:
+            query = select(cls.model).where(cls.model.expiration_date <= datetime.now())
+            result = await session.execute(query)
+            return result.scalars().all()
+
+    @classmethod
+    async def has_active_access(cls, user_id: int, secret_id: int) -> bool:
+        """Проверить, есть ли у пользователя активный доступ к секрету"""
+        async with async_session_maker() as session:
+            query = select(cls.model).filter_by(
+                user_id=user_id,
+                secret_id=secret_id
+            ).where(cls.model.expiration_date > datetime.now())
+
+            result = await session.execute(query)
+            return result.first() is not None
+
+    @classmethod
+    async def get_active_access(cls, user_id: int, secret_id: int) -> Optional[AccessRecord]:
+        """Получить активную запись доступа"""
+        async with async_session_maker() as session:
+            query = select(cls.model).filter_by(
+                user_id=user_id,
+                secret_id=secret_id
+            ).where(cls.model.expiration_date > datetime.now())
+
+            result = await session.execute(query)
+            return result.scalar_one_or_none()
+
+    @classmethod
+    async def get_user_active_accesses(cls, user_id: int) -> List[AccessRecord]:
+        """Получить все активные доступы пользователя"""
+        async with async_session_maker() as session:
+            query = select(cls.model).filter_by(
+                user_id=user_id
+            ).where(cls.model.expiration_date > datetime.now())
+
+            result = await session.execute(query)
+            return result.scalars().all()
