@@ -29,3 +29,4 @@ class OpenBaoClient:
             secret=secret,
             mount_point=self.mount
         )
+
