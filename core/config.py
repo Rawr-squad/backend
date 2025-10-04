@@ -10,6 +10,9 @@ DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 
+SECRET_HASH_KEY = os.getenv("SECRET_HASH_KEY")
+ACCESS_TOKEN_TTL_MINUTES = int(os.getenv("ACCESS_TOKEN_TTL_MINUTES"))
+
 def get_db_url():
     return (f'postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@'
             f'{DB_HOST}:{DB_PORT}/{DB_NAME}')

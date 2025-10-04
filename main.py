@@ -1,12 +1,12 @@
 import uvicorn
 from fastapi import FastAPI
 
+from endpoints.secrets import secret_router
 from endpoints.users import user_router
-from endpoints.openbao_api import router
 
 app = FastAPI()
-app.include_router(user_router, prefix='/auth')
-app.include_router(router, prefix='/openbao', tags=["openbao"])
+app.include_router(user_router, prefix='/users')
+app.include_router(secret_router, prefix='/secrets', tags=["openbao"])
 
 if __name__ == '__main__':
     uvicorn.run(app=app, host='127.0.0.1', port=8000)
