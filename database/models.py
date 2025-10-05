@@ -21,7 +21,7 @@ class User(Base):
     email: Mapped[Optional[str]] = mapped_column(String(100), unique=True, index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     disabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    field: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    position: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
 
 class Admin(Base):

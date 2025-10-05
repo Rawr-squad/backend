@@ -39,7 +39,7 @@ async def create_user_if_not_exists(user_data):
             firstname=user_data["firstname"],
             lastname=user_data["lastname"],
             email=user_data.get("email"),
-            field=user_data.get("field"),
+            position=user_data.get("position"),
             disabled=False
         )
 
@@ -60,7 +60,7 @@ async def create_test_users():
             "lastname": "baranov",
             "password": "baranov123123123",
             "email": "valdemar@example.com",
-            "field": "Development"
+            "position": "Development"
         },
         {
             "username": "galina",
@@ -68,7 +68,7 @@ async def create_test_users():
             "lastname": "sergeevna",
             "password": "galya12321",
             "email": "galina@example.com",
-            "field": "Management"
+            "position": "Management"
         }
     ]
 

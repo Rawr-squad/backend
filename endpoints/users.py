@@ -30,7 +30,7 @@ async def get_users(user_id: int):
         email=user.email,
         firstname=user.firstname,
         lastname=user.lastname,
-        field=user.field,
+        field=user.position,
         disabled=user.disabled,
         created_at=user.created_at,
         updated_at=user.updated_at
@@ -70,7 +70,7 @@ async def add_user(user: UserCreate):
         email=new_user.email,
         firstname=new_user.firstname,
         lastname=new_user.lastname,
-        field=new_user.field,
+        field=new_user.position,
         disabled=new_user.disabled,
         created_at=new_user.created_at,
         updated_at=new_user.update_at

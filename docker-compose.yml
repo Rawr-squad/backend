@@ -53,15 +53,17 @@ services:
     networks:
       - orencode_network
     command: >
-      sh -c "echo 'Applying database migrations...' &&
-             alembic upgrade head &&
-             echo 'Creating admin user...' &&
-             python scripts/create_admin.py &&
-             echo 'Creating test users...' &&
-             python scripts/create_test_users.py &&
-             echo 'Starting FastAPI server...' &&
-             uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
-
+      sh -c "
+        echo 'Running Alembic migrations...' &&
+        alembic revision --autogenerate -m 'auto migration' || true &&
+        alembic upgrade head &&
+        echo 'Creating admin user...' &&
+        python scripts/create_admin.py &&
+        echo 'Creating test users...' &&
+        python scripts/create_test_users.py &&
+        echo 'Starting FastAPI server...' &&
+        uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      "
 volumes:
   postgres_data:
 

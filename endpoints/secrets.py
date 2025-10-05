@@ -1,6 +1,6 @@
 from datetime import timedelta, datetime
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.sql.annotation import Annotated
 from starlette import status
 
@@ -114,15 +114,19 @@ import asyncio
 from typing import Optional
 
 
-@secret_router.get('/requests')
+@secret_router.get("/requests")
 async def get_access_requests(
-        timeout: int = 30,  # Таймаут long polling в секундах
-        last_update: Optional[str] = None,  # Время последнего обновления от клиента
-        current_admin: AdminResponse = Depends(get_current_admin)
+    timeout: int = 30,
+    last_update: Optional[str] = None,
+    status: Optional[AccessStatus] = Query(
+        None,
+        description="Фильтрация по статусу: approved, rejected, pending"
+    ),
+    current_admin: AdminResponse = Depends(get_current_admin)
 ):
     """
     Long polling эндпоинт для получения access requests.
-    Клиент должен передавать last_update (timestamp последнего полученного обновления)
+    Можно фильтровать по статусу (approved/rejected/pending).
     """
 
     start_time = asyncio.get_event_loop().time()
@@ -131,17 +135,21 @@ async def get_access_requests(
         # Получаем текущие запросы
         current_requests = await AccessRequestDAO.find_all()
 
-        # Если есть last_update, проверяем изменения
+        # фильтрация по статусу, если задан query параметр
+        if status:
+            current_requests = [
+                req for req in current_requests if req.status == status
+            ]
+
+        # Проверяем наличие last_update
         if last_update:
-            # Ищем запросы, которые изменились после last_update
             try:
-                last_update_dt = datetime.fromisoformat(last_update.replace('Z', '+00:00'))
+                last_update_dt = datetime.fromisoformat(last_update.replace("Z", "+00:00"))
                 changed_requests = [
                     req for req in current_requests
                     if req.update_at > last_update_dt
                 ]
 
-                # Если есть изменения - сразу возвращаем
                 if changed_requests:
                     return {
                         "requests": current_requests,
@@ -149,14 +157,12 @@ async def get_access_requests(
                         "has_changes": True
                     }
             except ValueError:
-                # Если невалидный last_update, возвращаем все запросы
                 return {
                     "requests": current_requests,
                     "last_update": datetime.now().isoformat(),
                     "has_changes": True
                 }
         else:
-            # Если нет last_update - возвращаем все запросы
             return {
                 "requests": current_requests,
                 "last_update": datetime.now().isoformat(),
@@ -166,7 +172,6 @@ async def get_access_requests(
         # Проверяем таймаут
         elapsed_time = asyncio.get_event_loop().time() - start_time
         if elapsed_time >= timeout:
-            # Таймаут - возвращаем текущее состояние (без изменений)
             return {
                 "requests": current_requests,
                 "last_update": last_update or datetime.now().isoformat(),
@@ -174,9 +179,7 @@ async def get_access_requests(
                 "timeout": True
             }
 
-        # Ждем перед следующей проверкой
-        await asyncio.sleep(2)  # Проверяем каждые 2 секунды
-
+        await asyncio.sleep(2)
 
 @secret_router.post('/requests/change_status')
 async def change_status_access_request(

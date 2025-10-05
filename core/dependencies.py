@@ -36,7 +36,7 @@ async def get_current_user(
         email=user.email,
         firstname=user.firstname,
         lastname=user.lastname,
-        field=user.field,
+        field=user.position,
         disabled=user.disabled,
         created_at=user.created_at,
         updated_at=user.update_at
