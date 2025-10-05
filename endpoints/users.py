@@ -164,3 +164,7 @@ async def send_access_request(
         )
 
     return new_access
+
+@user_router.get('/secrets')
+async def get_secrets(current_user: Annotated[UserResponse, Depends(get_current_active_user)]):
+    return await SecretDAO.find_data_by_id()
