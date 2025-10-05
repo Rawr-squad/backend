@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from core.security import verify_password, create_access_token, get_password_hash
 from core.config import ACCESS_TOKEN_TTL_MINUTES
 from core.dependencies import get_current_active_user
-from dao.dao import UserDAO, AccessRequestDAO, SecretDAO
+from dao.dao import UserDAO, AccessRequestDAO, SecretDAO, AccessRecordDAO
 from database.models import AccessRequest, AccessStatus
 from models.user import UserResponse, UserCreate, Token, LoginRequest, AccessRequestModel
 
@@ -167,5 +167,10 @@ async def send_access_request(
 
 
 @user_router.get('/secrets')
-async def get_secrets(current_user: Annotated[UserResponse, Depends(get_current_active_user)]):
+async def get_access_secrets(current_user: Annotated[UserResponse, Depends(get_current_active_user)]):
     return await SecretDAO.find_data_by_id()
+
+
+@user_router.get('/allowed_secrets')
+async def get_access_secrets(current_user: Annotated[UserResponse, Depends(get_current_active_user)]):
+    return await AccessRecordDAO.find_active_by_user(user_id=current_user.id)
