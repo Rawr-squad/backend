@@ -23,7 +23,7 @@ class BaseDAO(Generic[T]):
             return new_instance
 
     @classmethod
-    async def find_data_by_id(cls, **filtered_by):
+    async def find_data_by_filter(cls, **filtered_by):
         async with async_session_maker() as session:
             if filtered_by:
                 query = select(cls.model).filter_by(**filtered_by)

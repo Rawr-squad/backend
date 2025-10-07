@@ -66,7 +66,7 @@ async def get_current_admin(
     if username is None:
         raise credentials_exception
 
-    user = await AdminDAO.find_data_by_id(username=username)
+    user = await AdminDAO.find_data_by_filter(username=username)
     if user is None:
         raise credentials_exception
 

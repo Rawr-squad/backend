@@ -116,7 +116,7 @@ async def send_access_request(
         model: AccessRequestModel,
         current_user: Annotated[UserResponse, Depends(get_current_active_user)]
 ):
-    secret = await SecretDAO.find_data_by_id(id=model.secret_id)
+    secret = await SecretDAO.find_data_by_filter(id=model.secret_id)
     if not secret:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -168,7 +168,7 @@ async def send_access_request(
 
 @user_router.get('/secrets')
 async def get_access_secrets(current_user: Annotated[UserResponse, Depends(get_current_active_user)]):
-    return await SecretDAO.find_data_by_id()
+    return await SecretDAO.find_data_by_filter()
 
 
 @user_router.get('/allowed_secrets')

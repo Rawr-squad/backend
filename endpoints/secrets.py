@@ -17,7 +17,7 @@ secret_router = APIRouter()
 client = OpenBaoClient()
 
 async def authenticate_user(username: str, password: str):
-    user = await AdminDAO.find_data_by_id(username=username)
+    user = await AdminDAO.find_data_by_filter(username=username)
     if not user:
         return False
     if not verify_password(password, user.password_hash):
@@ -65,7 +65,7 @@ async def get_secret(
 
         if not active_access:
             # Проверяем, был ли доступ вообще
-            any_access = await AccessRecordDAO.find_data_by_id(
+            any_access = await AccessRecordDAO.find_data_by_filter(
                 user_id=current_user.id,
                 secret_id=secret_record.id
             )
@@ -98,7 +98,7 @@ async def get_secret(
 
 @secret_router.put("/secret/{path}")
 async def create_secret(path: str, payload: dict, current_admin : AdminResponse = Depends(get_current_admin)):
-    data = await SecretDAO.find_data_by_id(service_name=path)
+    data = await SecretDAO.find_data_by_filter(service_name=path)
     if not data:
         try:
             client.write_secret(path, payload)
