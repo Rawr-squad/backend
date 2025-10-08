@@ -1,8 +1,6 @@
 import asyncio
 import sys
-import os
 
-# Добавляем путь к проекту для импортов
 sys.path.append('/app')
 
 from database.database import async_session_maker
@@ -10,7 +8,6 @@ from database.models import User, Admin
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-# Используем pwdlib
 from pwdlib import PasswordHash
 
 password_hash = PasswordHash.recommended()
@@ -47,7 +44,6 @@ async def create_admin():
 
     try:
         async with async_session_maker() as session:
-            # Проверяем существование админа
             query = select(Admin).where(Admin.username == username)
             result = await session.execute(query)
             existing_admin = result.scalar_one_or_none()
@@ -56,7 +52,6 @@ async def create_admin():
                 print(f"Admin user '{username}' already exists")
                 return
 
-            # Создаем админа
             admin_user = Admin(
                 username=username,
                 password_hash=get_password_hash(password),

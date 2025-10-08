@@ -27,7 +27,7 @@ async def authenticate_user(username: str, password: str):
 
 @secret_router.post("/login", response_model=Token)
 async def login_for_access_token(
-        login_data: LoginRequest  # Используем LoginRequest вместо Annotated
+        login_data: LoginRequest
 ):
     user = await authenticate_user(login_data.username, login_data.password)
     if not user:
@@ -49,7 +49,6 @@ async def get_secret(
         current_user: UserResponse = Depends(get_current_active_user)
 ):
     try:
-        # Находим секрет по path
         secret_record = await SecretDAO.find_by_path(path)
         if not secret_record:
             raise HTTPException(
@@ -57,14 +56,12 @@ async def get_secret(
                 detail=f"Secret '{path}' not found"
             )
 
-        # Проверяем активный доступ
         active_access = await AccessRecordDAO.get_active_access(
             user_id=current_user.id,
             secret_id=secret_record.id
         )
 
         if not active_access:
-            # Проверяем, был ли доступ вообще
             any_access = await AccessRecordDAO.find_data_by_filter(
                 user_id=current_user.id,
                 secret_id=secret_record.id

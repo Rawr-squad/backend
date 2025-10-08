@@ -58,14 +58,3 @@ class AccessRequestModel(BaseModel):
     access_period : int
     access_reason : str = None
     secret_id : int
-
-# Уберите дублирующиеся классы
-# class User(UserBase):
-#     id: int
-#     disabled: Optional[bool] = None
-
-#     class Config:
-#         from_attributes = True
-
-# class UserInDB(User):
-#     hashed_password: str

@@ -2,7 +2,6 @@ import asyncio
 import sys
 import os
 
-# Добавляем путь к проекту для импортов
 sys.path.append('/app')
 
 from database.database import async_session_maker
@@ -10,7 +9,6 @@ from database.models import User
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-# Используем pwdlib
 from pwdlib import PasswordHash
 
 password_hash = PasswordHash.recommended()
@@ -91,7 +89,6 @@ async def create_test_users():
 
 async def main():
     """Основная функция"""
-    # Ждем подключения к БД
     max_retries = 10
     for i in range(max_retries):
         try:
@@ -107,7 +104,6 @@ async def main():
                 print("Database connection failed")
                 return
 
-    # Создаем тестовых пользователей
     await create_test_users()
 
 

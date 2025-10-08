@@ -1,8 +1,8 @@
 import os
-import hvac  # официальный клиент для Vault/OpenBao
+import hvac
 from dotenv import load_dotenv
 
-load_dotenv()  # подхватываем .env
+load_dotenv()
 
 class OpenBaoClient:
     def __init__(self):
