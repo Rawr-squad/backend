@@ -4,7 +4,7 @@ import sys
 sys.path.append('/app')
 
 from database.database import async_session_maker
-from database.models import User, Admin
+from database.models import Admin
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 

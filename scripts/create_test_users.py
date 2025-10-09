@@ -88,7 +88,6 @@ async def create_test_users():
 
 
 async def main():
-    """Основная функция"""
     max_retries = 10
     for i in range(max_retries):
         try:
